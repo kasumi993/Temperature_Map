@@ -8,6 +8,7 @@
 
 body{
     background-color:#F7DDC4 ;
+    overflow: hidden;
 }
 
 nav{
@@ -77,3 +78,10 @@ main{
 /*end of search bar style */
 
 
+/*map style*/
+
+#map { 
+    height: 94%;
+    width: 98%; 
+    margin-top:1%
+}
