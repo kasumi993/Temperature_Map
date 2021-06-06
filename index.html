@@ -32,6 +32,30 @@
                 <h1 id="welcome">Bienvenue,</h1>
                 <p id="citations">“Limaçon aventureux, le temps sera pluvieux.”</p>
             </div>
+
+            <div class="filtrage-box">
+                <h1 class="filtrer">Filtrer l'affichage par:</h1>
+                    <form>
+                        <span>
+                            <input type="radio" name="radio" checked/>
+                            <label>Stations</label>
+                            <div class="bullet"></div>
+                        </span>
+                        <span>
+                            <input type="radio" name="radio" />
+                            <label>Région</label>
+                            <div class="bullet"></div>
+                        </span>
+                    </form>
+
+                <h1 class="filtrer" >Periode:</h1>
+                <form class="date_form">
+                    <div class="form-group">
+                      <input id="start" type="date" name="datepicker"  placeholder="Du..." min="1968-01-01" max="2021-6-6">
+                      <input id="end" type="date" name="datepicker" placeholder="Au..." min="1968-01-01" max="2021-6-6">
+                    </div>
+                  </form>
+            </div>
             
         </nav>
         <main class="col-8">

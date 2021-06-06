@@ -95,6 +95,73 @@ main{
 /*end of welcome text style*/
 
 
+/*filtre style*/
+
+.filtrage-box{
+    margin-top: 12%;
+    margin-left: 12%;
+}
+
+.filtrer{ 
+    font-size: 1em;
+    color: #656565;   
+}
+.filtrage-box form{
+margin-top: 10%;
+margin-bottom: 10%; 
+}
+
+.filtrage-box span {
+	position: relative;
+    width: 100%;
+    color: #a1a1a1;
+}
+
+.filtrage-box label:before {
+    content: "";
+    width: 15px;
+    height: 15px;
+    background: white;
+    box-shadow: 0.5px 0.5px 1px #a1a1a1;
+    position: absolute;
+    left: 4%;
+    top: 16%;
+    border-radius: 50%;
+}
+
+.filtrage-box input[type="radio"] {
+	opacity: 0;
+	display: inline-block;
+	z-index: 100;
+	margin: 0;
+	padding: 0;
+    width: 10%;
+	position: relative;
+	cursor: pointer;
+}
+
+.filtrage-box .bullet {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background-color:#F7DDC4 ;
+    left: 0%;
+    top: 0px;
+    border: 2px solid #ffffff;
+    opacity: 0;
+    border-radius: 50%;
+}
+
+.filtrage-box input[type="radio"]:checked ~ .bullet {
+	opacity: 1;
+}
+
+/*end of filtre style*/
+
+
+
+
+
 /*map style*/
 
 #map { 
