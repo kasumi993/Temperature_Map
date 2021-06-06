@@ -1,6 +1,27 @@
- // Creation d'une carte dans la balise div "map", et positionne la vue sur un point donné et un niveau de zoom
- var map = L.map('map').setView([46.5,2.5], 5);
- // Ajout d'une couche de dalles OpenStreetMap
- L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
- attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
- }).addTo(map);
+fetch('../citation.json')
+  .then(function (response) {
+    return response.json();
+  })
+  .then(function (data) {
+    appendData(data);
+  })
+  .catch(function (err) {
+    console.log(err);
+  });
+
+compteur=0;
+
+function appendData(data) {
+    setInterval(function() {
+        document.getElementById('citations').innerHTML = data[compteur].citation;
+        if (compteur==4){
+            compteur=-1
+        }
+        compteur++;
+    }, 5000);
+    
+}
+
+
+
+

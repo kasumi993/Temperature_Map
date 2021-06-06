@@ -1,13 +1,12 @@
 #coding:utf-8
 import http.server
+import socketserver
 
 port=80
 address=("",port)
 
-
-handler=http.server.CGIHTTPRequestHandler
-handler.cgi_directories=["/"]
-httpd=http.server.HTTPServer(address,handler)
+handler=http.server.SimpleHTTPRequestHandler
+httpd=socketserver.TCPServer(address,handler)
 
 
 print(f"serveur python démarré sur le PORT {port}")
