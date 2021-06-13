@@ -1,14 +1,233 @@
-#coding:utf-8
+# TD2-corrige-5-3.py : corrigé du TD2, exercise 5.3 (TD2-s6.py)
+
 import http.server
 import socketserver
+from urllib.parse import urlparse, parse_qs, unquote
 
-port=80
-address=("",port)
+import matplotlib.pyplot as plt
+import datetime as dt
+from numpy import *
+import matplotlib.dates as pltd
 
-handler=http.server.SimpleHTTPRequestHandler
-httpd=socketserver.TCPServer(address,handler)
+import sqlite3
 
+#
+# Définition du nouveau handler
+#
+class RequestHandler(http.server.SimpleHTTPRequestHandler):
 
-print(f"serveur python démarré sur le PORT {port}")
+  # sous-répertoire racine des documents statiques
+  static_dir = '/client'
 
+  #
+  # On surcharge la méthode qui traite les requêtes GET
+  #
+  def do_GET(self):
+
+    # On récupère les étapes du chemin d'accès
+    self.init_params()
+
+    # le chemin d'accès commence par /time
+    if self.path_info[0] == 'time':
+      self.send_time()
+   
+     # le chemin d'accès commence par /regions
+    elif self.path_info[0] == 'regions':
+      self.send_regions()
+      
+    # le chemin d'accès commence par /ponctualite
+    elif self.path_info[0] == 'ponctualite':
+      self.send_ponctualite()
+      
+    # ou pas...
+    else:
+      self.send_static()
+
+  #
+  # On surcharge la méthode qui traite les requêtes HEAD
+  #
+  def do_HEAD(self):
+    self.send_static()
+
+  #
+  # On envoie le document statique demandé
+  #
+  def send_static(self):
+
+    # on modifie le chemin d'accès en insérant un répertoire préfixe
+    self.path = self.static_dir + self.path
+
+    # on appelle la méthode parent (do_GET ou do_HEAD)
+    # à partir du verbe HTTP (GET ou HEAD)
+    if (self.command=='HEAD'):
+        http.server.SimpleHTTPRequestHandler.do_HEAD(self)
+    else:
+        http.server.SimpleHTTPRequestHandler.do_GET(self)
+  
+  #     
+  # on analyse la requête pour initialiser nos paramètres
+  #
+  def init_params(self):
+    # analyse de l'adresse
+    info = urlparse(self.path)
+    self.path_info = [unquote(v) for v in info.path.split('/')[1:]]
+    self.query_string = info.query
+    self.params = parse_qs(info.query)
+
+    # récupération du corps
+    length = self.headers.get('Content-Length')
+    ctype = self.headers.get('Content-Type')
+    if length:
+      self.body = str(self.rfile.read(int(length)),'utf-8')
+      if ctype == 'application/x-www-form-urlencoded' : 
+        self.params = parse_qs(self.body)
+    else:
+      self.body = ''
+   
+    # traces
+    print('info_path =',self.path_info)
+    print('body =',length,ctype,self.body)
+    print('params =', self.params)
+    
+  #
+  # On envoie un document avec l'heure
+  #
+  def send_time(self):
+    
+    # on récupère l'heure
+    time = self.date_time_string()
+
+    # on génère un document au format html
+    body = '<!doctype html>' + \
+           '<meta charset="utf-8">' + \
+           '<title>l\'heure</title>' + \
+           '<div>Voici l\'heure du serveur :</div>' + \
+           '<pre>{}</pre>'.format(time)
+
+    # pour prévenir qu'il s'agit d'une ressource au format html
+    headers = [('Content-Type','text/html;charset=utf-8')]
+
+    # on envoie
+    self.send(body,headers)
+
+  #
+  # On envoie la liste des régions
+  #
+  def send_regions(self):
+
+    # création du curseur (la connexion a été créée par le programme principal)
+    c = conn.cursor()
+    
+    # votre code ici
+    c.execute("SELECT DISTINCT Région FROM 'regularite-mensuelle-ter'")
+    r = c.fetchall()
+    txt = 'Liste des {} régions :\n'.format(len(r))
+    for a in r:
+       txt = txt + '{}\n'.format(a[0])
+    
+    headers = [('Content-Type','text/plain;charset=utf-8')]
+    self.send(txt,headers)
+
+    
+  #
+  # On génère et on renvoie un graphique de ponctualite (cf. TD1)
+  #
+  def send_ponctualite(self):
+
+    # création du curseur (la connexion a été créée par le programme principal)
+    c = conn.cursor()
+    
+    # pas de paramètre => liste par défaut
+    if len(self.path_info) <= 1 :
+        # Definition des régions et des couleurs de tracé
+        regions = [("Rhône Alpes","blue"), ("Auvergne","green"), ("Auvergne-Rhône Alpes","cyan"), ('Bourgogne',"red"), 
+                   ('Franche Comté','orange'), ('Bourgogne-Franche Comté','olive') ]
+        title = 'Régularité des TER (en %)'
+    else:
+        # On teste que la région demandée existe bien
+        c.execute("SELECT DISTINCT Région FROM 'regularite-mensuelle-ter'")
+        reg = c.fetchall()
+
+        # Rq: reg est une liste de tuples
+        if (self.path_info[1],) in reg:
+          regions = [(self.path_info[1],"blue")]
+          title = 'Régularité des TER en région {} (en %)'.format(self.path_info[1])
+
+        # Région non trouvée -> erreur 404
+        else:
+            print ('Erreur nom')
+            self.send_error(404)
+            return None
+
+    
+    # configuration du tracé
+    fig1 = plt.figure(figsize=(18,6))
+    ax = fig1.add_subplot(111)
+    ax.set_ylim(bottom=80,top=100)
+    ax.grid(which='major', color='#888888', linestyle='-')
+    ax.grid(which='minor',axis='x', color='#888888', linestyle=':')
+    ax.xaxis.set_major_locator(pltd.YearLocator())
+    ax.xaxis.set_minor_locator(pltd.MonthLocator())
+    ax.xaxis.set_major_formatter(pltd.DateFormatter('%B %Y'))
+    ax.xaxis.set_tick_params(labelsize=10)
+    ax.xaxis.set_label_text("Date")
+    ax.yaxis.set_label_text("% de régularité")
+    
+    # boucle sur les régions
+    for l in (regions) :
+        c.execute("SELECT * FROM 'regularite-mensuelle-ter' WHERE Région=? ORDER BY Date",l[:1])  # ou (l[0],)
+        r = c.fetchall()
+
+        # recupération de la date (colonne 2) et transformation dans le format de pyplot
+        x = [pltd.date2num(dt.date(int(a[1][:4]),int(a[1][5:]),1)) for a in r if not a[7] == '']
+
+        # récupération de la régularité (colonne 8)
+        y = [float(a[7]) for a in r if not a[7] == '']
+
+        # tracé de la courbe
+        plt.plot_date(x,y,linewidth=1, linestyle='-', marker='o', color=l[1], label=l[0])
+        
+    # légendes
+    plt.legend(loc='lower left')
+    plt.title(title,fontsize=16)
+
+    # génération des courbes dans un fichier PNG
+    fichier = 'courbe_ponctualite.png'
+    plt.savefig('client/{}'.format(fichier))
+
+    # on envoie le code HTML de la balise img
+    html = '<img src="/{}?{}" alt="ponctualite {}" width="100%">'.format(fichier,self.date_time_string(),self.path)
+    headers = [('Content-Type','text/html;charset=utf-8')]
+    self.send(html,headers)
+
+  #
+  # On envoie les entêtes et le corps fourni
+  #
+  def send(self,body,headers=[]):
+
+    # on encode la chaine de caractères à envoyer
+    encoded = bytes(body, 'UTF-8')
+
+    # on envoie la ligne de statut
+    self.send_response(200)
+
+    # on envoie les lignes d'entête et la ligne vide
+    [self.send_header(*t) for t in headers]
+    self.send_header('Content-Length',int(len(encoded)))
+    self.end_headers()
+
+    # on envoie le corps de la réponse
+    self.wfile.write(encoded)
+
+ 
+#
+# Création de la connexion avec la base de données
+#
+conn = sqlite3.connect('ter.sqlite')
+
+#
+# Instanciation et lancement du serveur
+#
+httpd = socketserver.TCPServer(("", 8080), RequestHandler)
 httpd.serve_forever()
+
