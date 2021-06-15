@@ -17,7 +17,7 @@
 </head>
 <body onload="load_data()">  <!-- Récupération des données avec le chargement de la page -->
     <div class="row">
-        <nav class="col-4 opened" id="nav-courbes">
+        <nav class="col-4 hidden" id="nav-courbes">
             <button id="toggle-button" onclick="toggleIn()" ><i class="fa fa-arrow-left" aria-hidden="true"></i></button>
             <div style="margin: 5%;">
                 <h1 id="station-name">Station</h1>
@@ -67,31 +67,24 @@
                     <div class="bullet"></div>
                 </span>
             </div>
-            
-            <div class="filtrage-box temp">  
-                <span>
-                    <input type="checkbox" name="Temp_moy" checked/>
-                    <label>Températures moyennes</label>
-                    <div class="bullet-square"></div>
-                </span><br/>
-                <span>
-                    <input type="checkbox" name="Temp_max" />
-                    <label>Temperatures maximales</label>
-                    <div class="bullet-square"></div>
-                </span><br/>
-                <span>
-                    <input type="checkbox" name="Temp_min" />
-                    <label>Temperatures minimales</label>
-                    <div class="bullet-square"></div>
-                </span><br/>
-            </div>
                   
                     
             <div class="filtrage-box">
-                <h1 class="filtrer" >Periode:</h1>
-                <input id="start" type="date" name="datepicker"  placeholder="Du..." min="1968-01-01" max="2021-6-6">
-                <input id="end" type="date" name="datepicker" placeholder="Au..." min="1968-01-01" max="2021-6-6">
+                <form name="formulaire" action="recherches" method="POST" onsubmit="return true"></form>
+                    <h1 class="filtrer" >Periode:</h1>
+                    <input id="start" type="date" name="datepicker"  placeholder="Du..." min="1968-01-01" max="2021-6-6">
+                    <input id="end" type="date" name="datepicker" placeholder="Au..." min="1968-01-01" max="2021-6-6">
+                    <input type="submit" value="valider"/>
+                </form>
             </div> 
+
+            <div class="filtrage-box">  
+                <div class="row">
+                    <div class="col-2"><img src="images/kiwi.png" width="50px"/></div>
+                    <p class="col-8 kiwi-text">Choisis tes paramètres puis appuies sur une zone sur la carte pour voir ses données</p>   
+                </div>
+            </div>
+
         </nav>
 
 

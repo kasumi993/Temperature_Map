@@ -79,17 +79,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             data.append(donnee)
         self.send_json(data)
         
-    # requete description - retourne la description du lieu dont on passe l'id en paramètre dans l'URL
-    elif self.path_info[0] == "description":
-      data=[{'id':1,'desc':"Il ne faut pas être <b>trop grand</b> pour marcher dans cette rue qui passe sous une maison"},
-            {'id':2,'desc':"Cette rue est <b>si étroite</b> qu'on touche les 2 côtés en tendant les bras !"},
-            {'id':3,'desc':"Ce jardin <b>méconnu</b> évoque le palais idéal du Facteur Cheval"}]
-      for c in data:
-        if c['id'] == int(self.path_info[1]):
-          self.send_json(c)
-          break
         
-
     # requête générique
     elif self.path_info[0] == "service":
       self.send_html('<p>Path info : <code>{}</p><p>Chaîne de requête : <code>{}</code></p>' \
@@ -142,15 +132,16 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
       if 'Temp_moy' in self.body:
           self.courbes[2]=1
                     
-      if self.zone == 'station':
-          self.id_station = int(self.params['id_station'][0])
-          nom_courbe = self.courbe_station(self.courbes,self.id_station,self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
-          self.send_html('<p><a href="HTML_Temperatures.html">Retour au formulaire</a></p><p><img src="Plot/{}" alt="Courbe de température"/></p>'.format(nom_courbe));
-
       if self.zone == 'france':
           nom_courbe = self.courbe_nationale(self.courbes,self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
-          self.send_html('<p><a href="HTML_Temperatures.html">Retour au formulaire</a></p><p><img src="Plot/{}" alt="Courbe de température"/></p>'.format(nom_courbe));
+          self.send_html('<img src="Plot/{}" alt="Courbe de température"/>'.format(nom_courbe));
 
+      else:
+          self.id_station = int(self.params['id_station'][0])
+          nom_courbe = self.courbe_station(self.courbes,self.id_station,self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
+          self.send_html('<img src="Plot/{}" alt="Courbe de température"/>'.format(nom_courbe));
+
+      
 
     elif self.path_info[0] == "recherches+":
          
@@ -261,12 +252,12 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
 #En entre une date du type '20120201'
 #☻En sortie on a '01/02/2012'
 #==============================================================================
-    def format(S):
-        return(S[-2]+S[-1]+'/'+S[-4]+S[-3]+'/'+S[0]+S[1]+S[2]+S[3])    
+  def format(S):
+    return(S[-2]+S[-1]+'/'+S[-4]+S[-3]+'/'+S[0]+S[1]+S[2]+S[3])    
 
 
     
-    def courbe_station(self,courbes,id_station,jour_1,mois_1,annee_1,jour_2,mois_2,annee_2):
+  def courbe_station(self,courbes,id_station,jour_1,mois_1,annee_1,jour_2,mois_2,annee_2):
         """fonction pour afficher les courbes par station"""
         
         id_station = int(id_station)
@@ -329,7 +320,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         return(str(id_station)+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png')
         
         
-    def courbe_station_av(self,courbes,id_station,jour,mois):
+  def courbe_station_av(self,courbes,id_station,jour,mois):
         """fonction pour afficher les courbes par station"""
         
         id_station = int(id_station)
@@ -385,7 +376,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         plt.savefig('client/Plot/'+str(id_station)+'_'+str(date)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png',bbox_inches='tight')
         titre=str(id_station)+'_'+str(date)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png'
         date1=int(str(date)+'1976')
-        date2=int(str(date)+'2016')
+        date2=int(str(date)+'2020')
         
         #Remplissage de la table courbe_france
 
@@ -394,7 +385,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         return(str(id_station)+'_'+str(date)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png')
 
 
-    def courbe_nationale(self,courbes,jour_1,mois_1,annee_1,jour_2,mois_2,annee_2):
+  def courbe_nationale(self,courbes,jour_1,mois_1,annee_1,jour_2,mois_2,annee_2):
         global c
         """fonction pour afficher les courbes en faisant la moyenne nationale"""
         
@@ -407,7 +398,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
 
         TimeDate=[] #liste des dates
         sta='33'
-        c.execute('SELECT DATE from historique WHERE numéro = {} AND date >= {} AND date < {} ORDER BY date ASC'.format(sta, date1, date2))
+        c.execute('SELECT DATE from historique WHERE Numero = {} AND date >= {} AND date < {} ORDER BY date ASC'.format(sta, date1, date2))
         data = c.fetchall()
         for k in data:
             TimeDate.append(str(k[0]))
@@ -489,7 +480,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         return('national'+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png')
 
 
-    def courbe_nationale_av(self,courbes,jour,mois):
+  def courbe_nationale_av(self,courbes,jour,mois):
         global c
         """fonction pour afficher les courbes en faisant la moyenne nationale"""
         
@@ -577,7 +568,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         plt.savefig('Client/Plot/'+'national'+'_'+str(date1)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png',bbox_inches='tight')
         titre='national'+'_'+str(date1)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png'
         date0=int(str(date1)+'1976')
-        date2=int(str(date1)+'2016')
+        date2=int(str(date1)+'2020')
         #Remplissage de la table courbe_france
         c.execute('INSERT INTO courbes_france VALUES (?,?,?,?,?,?)',(titre,date0,date2,courbes[0],courbes[1],courbes[2]))
         conn.commit()
