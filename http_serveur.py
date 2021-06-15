@@ -1,76 +1,246 @@
-# TD2-corrige-5-3.py : corrigé du TD2, exercise 5.3 (TD2-s6.py)
-
+import sqlite3
 import http.server
 import socketserver
-from urllib.parse import urlparse, parse_qs, unquote
-
+from urllib.parse import urlparse, parse_qs
+import json
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import datetime as dt
-from numpy import *
-import matplotlib.dates as pltd
+import matplotlib.axis
 
-import sqlite3
+mois = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
 
-#
-# Définition du nouveau handler
-#
+
+#connexion à la base de donnée
+try :
+    conn=sqlite3.connect('TemperatureDB.db')
+    c=conn.cursor()
+    print("connexion à la base de donnée réussie")
+except Exception as err:
+    print("erreur de connexion à la base de donnee",err)
+
+
+#on formate l'affichage de la logitude pour passer de l'ecriture dms à décimal
+
+
+
+
+# définition du handler
 class RequestHandler(http.server.SimpleHTTPRequestHandler):
-
-  # sous-répertoire racine des documents statiques
+  global conn
+  global c
+    
+# sous-répertoire racine des documents statiques
   static_dir = '/client'
 
-  #
-  # On surcharge la méthode qui traite les requêtes GET
-  #
+#cette fonction sert à modifier directement le format des latitudes/longitudes
+#decommenter pour utiliser
+  # def conversion(chaine):
+  #   signe = chaine[0]
+  #   chaine = chaine.split(':')
+  #   degre = abs(float(chaine[0]))
+  #   minute = float(chaine[1])
+  #   seconde = float(chaine[2])
+  #   DD = degre + minute/60 + seconde/3600
+  #   if signe == '+':
+  #       return DD
+  #   else:
+  #       return -DD
+    
+    
+  # c.execute("SELECT Numero,Latitude,Longitude FROM 'stations-meteo'")
+  # resultat=c.fetchall()
+  # print(resultat[1])
+
+  # for i in range(len(resultat)):
+  #   c.execute("UPDATE 'stations-meteo' SET Latitude=?, Longitude= ? WHERE Numero = ?",(conversion(resultat[i][1]),conversion(resultat[i][2]),resultat[i][0]))
+  #   conn.commit()
+
+#fin fonction modification base de donnée
+
+  # on surcharge la méthode qui traite les requêtes GET
   def do_GET(self):
-
-    # On récupère les étapes du chemin d'accès
+    global c
     self.init_params()
+    print("path info: "+str(self.path_info))
 
-    # le chemin d'accès commence par /time
-    if self.path_info[0] == 'time':
-      self.send_time()
-   
-     # le chemin d'accès commence par /regions
-    elif self.path_info[0] == 'regions':
-      self.send_regions()
-      
-    # le chemin d'accès commence par /ponctualite
-    elif self.path_info[0] == 'ponctualite':
-      self.send_ponctualite()
-      
-    # ou pas...
+    # requete location - retourne la liste de lieux et leurs coordonnées géographiques
+    if self.path_info[0]=='location_station':
+        data=[]
+        c.execute("SELECT * FROM 'stations-meteo'")
+        liste_stations = c.fetchall()
+        for station in liste_stations:
+            donnee  = {}
+            donnee['num']=station[0]
+            donnee['ville']=station[1]
+            donnee['lat']=station[2]
+            donnee['lon']=station[3]
+            donnee['alt']=station[4]
+            data.append(donnee)
+        self.send_json(data)
+        
+    # requete description - retourne la description du lieu dont on passe l'id en paramètre dans l'URL
+    elif self.path_info[0] == "description":
+      data=[{'id':1,'desc':"Il ne faut pas être <b>trop grand</b> pour marcher dans cette rue qui passe sous une maison"},
+            {'id':2,'desc':"Cette rue est <b>si étroite</b> qu'on touche les 2 côtés en tendant les bras !"},
+            {'id':3,'desc':"Ce jardin <b>méconnu</b> évoque le palais idéal du Facteur Cheval"}]
+      for c in data:
+        if c['id'] == int(self.path_info[1]):
+          self.send_json(c)
+          break
+        
+
+    # requête générique
+    elif self.path_info[0] == "service":
+      self.send_html('<p>Path info : <code>{}</p><p>Chaîne de requête : <code>{}</code></p>' \
+          .format('/'.join(self.path_info),self.query_string));
+
     else:
       self.send_static()
 
-  #
-  # On surcharge la méthode qui traite les requêtes HEAD
-  #
-  def do_HEAD(self):
-    self.send_static()
 
-  #
-  # On envoie le document statique demandé
-  #
+  # méthode pour traiter les requêtes HEAD
+  def do_HEAD(self):
+      self.send_static()
+
+
+  # méthode pour traiter les requêtes POST - non utilisée dans l'exemple
+  def do_POST(self):
+    self.init_params()
+    
+    
+    # requête générique
+    if self.path_info[0] == "recherches":
+              
+      #Renommage des variables envoyées par le formulaire
+                     
+      self.jour_debut = self.params['jour_debut'][0]
+      self.jour_fin = self.params['jour_fin'][0]
+      self.mois_debut = self.params['mois_debut'][0]
+      self.mois_fin = self.params['mois_fin'][0]
+      self.annee_debut = self.params['annee_debut'][0]
+      self.annee_fin = self.params['annee_fin'][0]
+      self.zone = self.params['zone'][0]      
+      self.courbes = [0,0,0]
+      
+      if len(self.jour_debut)==1:
+          self.jour_debut = '0'+self.jour_debut
+      if len(self.jour_fin)==1:
+          self.jour_fin = '0'+self.jour_fin
+      if len(self.mois_debut)==1:
+          self.mois_debut = '0'+self.mois_debut
+      if len(self.mois_fin)==1:
+          self.mois_fin = '0'+self.mois_fin
+                
+
+      if 'Temp_min' in self.body:
+          self.courbes[0]=1
+      
+      if 'Temp_max' in self.body:
+          self.courbes[1]=1
+
+      if 'Temp_moy' in self.body:
+          self.courbes[2]=1
+                    
+      if self.zone == 'station':
+          self.id_station = int(self.params['id_station'][0])
+          nom_courbe = self.courbe_station(self.courbes,self.id_station,self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
+          self.send_html('<p><a href="HTML_Temperatures.html">Retour au formulaire</a></p><p><img src="Plot/{}" alt="Courbe de température"/></p>'.format(nom_courbe));
+
+      if self.zone == 'france':
+          nom_courbe = self.courbe_nationale(self.courbes,self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
+          self.send_html('<p><a href="HTML_Temperatures.html">Retour au formulaire</a></p><p><img src="Plot/{}" alt="Courbe de température"/></p>'.format(nom_courbe));
+
+
+    elif self.path_info[0] == "recherches+":
+         
+      #Renommage des variables envoyées par le formulaire
+
+      self.jour = self.params['jour_seul'][0]
+      self.mois = self.params['mois_seul'][0]
+      self.zone = self.params['zonegeog'][0]
+      self.courbes = [0,0,0]
+      
+      if len(self.jour)==1:
+          self.jour = '0'+self.jour
+
+      if len(self.mois)==1:
+          self.mois = '0'+self.mois
+
+      
+      if 'Temp_min' in self.body:
+          self.courbes[0]=1
+      
+      if 'Temp_max' in self.body:
+          self.courbes[1]=1
+
+      if 'Temp_moy' in self.body:
+          self.courbes[2]=1
+          
+      
+      if self.zone == 'station':
+          self.id_station = int(self.params['id_station'][0])
+          nom_courbe = self.courbe_station_av(self.courbes,self.id_station,self.jour,self.mois)
+          self.send_html('<p><a href="HTML_Temperatures_rech_av.html">Retour au formulaire</a></p><p><img src="Plot/{}" alt="Courbe de température"/></p>'.format(nom_courbe));
+
+      if self.zone == 'france':
+          nom_courbe = self.courbe_nationale_av(self.courbes,self.jour,self.mois)
+          self.send_html('<p><a href="HTML_Temperatures_rech_av.html">Retour au formulaire</a></p><p><img src="Plot/{}" alt="Courbe de température"/></p>'.format(nom_courbe));
+    
+            
+    else:
+      self.send_error(405)
+
+
+  # on envoie le document statique demandé
   def send_static(self):
 
-    # on modifie le chemin d'accès en insérant un répertoire préfixe
+    # on modifie le chemin d'accès en insérant le répertoire préfixe
     self.path = self.static_dir + self.path
 
-    # on appelle la méthode parent (do_GET ou do_HEAD)
+    # on calcule le nom de la méthode parent à appeler (do_GET ou do_HEAD)
     # à partir du verbe HTTP (GET ou HEAD)
-    if (self.command=='HEAD'):
-        http.server.SimpleHTTPRequestHandler.do_HEAD(self)
-    else:
-        http.server.SimpleHTTPRequestHandler.do_GET(self)
-  
-  #     
+    method = 'do_{}'.format(self.command)
+
+    # on traite la requête via la classe parent
+    getattr(http.server.SimpleHTTPRequestHandler,method)(self)
+
+
+  # on envoie un document html dynamique
+  def send_html(self,content):
+     headers = [('Content-Type','text/html;charset=utf-8')]
+     html = '<DOCTYPE html><html><title>{}</title><link rel="stylesheet" type="text/css" href="style.css"/><meta charset="utf-8">{}</html>' \
+         .format(self.path_info[0],content)
+     self.send(html,headers)
+
+  # on envoie un contenu encodé en json
+  def send_json(self,data,headers=[]):
+    body = bytes(json.dumps(data),'utf-8') # encodage en json et UTF-8
+    self.send_response(200)
+    self.send_header('Content-Type','application/json')
+    self.send_header('Content-Length',int(len(body)))
+    [self.send_header(*t) for t in headers]
+    self.end_headers()
+    self.wfile.write(body) 
+
+  # on envoie la réponse
+  def send(self,body,headers=[]):
+     encoded = bytes(body, 'UTF-8')
+
+     self.send_response(200)
+
+     [self.send_header(*t) for t in headers]
+     self.send_header('Content-Length',int(len(encoded)))
+     self.end_headers()
+
+     self.wfile.write(encoded)
+
+
   # on analyse la requête pour initialiser nos paramètres
-  #
   def init_params(self):
     # analyse de l'adresse
     info = urlparse(self.path)
-    self.path_info = [unquote(v) for v in info.path.split('/')[1:]]
+    self.path_info = info.path.split('/')[1:]
     self.query_string = info.query
     self.params = parse_qs(info.query)
 
@@ -83,151 +253,340 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         self.params = parse_qs(self.body)
     else:
       self.body = ''
-   
-    # traces
-    print('info_path =',self.path_info)
-    print('body =',length,ctype,self.body)
-    print('params =', self.params)
+
+    print(length,ctype,self.body, self.params)
     
-  #
-  # On envoie un document avec l'heure
-  #
-  def send_time(self):
-    
-    # on récupère l'heure
-    time = self.date_time_string()
+#==============================================================================
+# Format : fonction qui change la forme de la date.
+#En entre une date du type '20120201'
+#☻En sortie on a '01/02/2012'
+#==============================================================================
+    def format(S):
+        return(S[-2]+S[-1]+'/'+S[-4]+S[-3]+'/'+S[0]+S[1]+S[2]+S[3])    
 
-    # on génère un document au format html
-    body = '<!doctype html>' + \
-           '<meta charset="utf-8">' + \
-           '<title>l\'heure</title>' + \
-           '<div>Voici l\'heure du serveur :</div>' + \
-           '<pre>{}</pre>'.format(time)
-
-    # pour prévenir qu'il s'agit d'une ressource au format html
-    headers = [('Content-Type','text/html;charset=utf-8')]
-
-    # on envoie
-    self.send(body,headers)
-
-  #
-  # On envoie la liste des régions
-  #
-  def send_regions(self):
-
-    # création du curseur (la connexion a été créée par le programme principal)
-    c = conn.cursor()
-    
-    # votre code ici
-    c.execute("SELECT DISTINCT Région FROM 'regularite-mensuelle-ter'")
-    r = c.fetchall()
-    txt = 'Liste des {} régions :\n'.format(len(r))
-    for a in r:
-       txt = txt + '{}\n'.format(a[0])
-    
-    headers = [('Content-Type','text/plain;charset=utf-8')]
-    self.send(txt,headers)
 
     
-  #
-  # On génère et on renvoie un graphique de ponctualite (cf. TD1)
-  #
-  def send_ponctualite(self):
-
-    # création du curseur (la connexion a été créée par le programme principal)
-    c = conn.cursor()
-    
-    # pas de paramètre => liste par défaut
-    if len(self.path_info) <= 1 :
-        # Definition des régions et des couleurs de tracé
-        regions = [("Rhône Alpes","blue"), ("Auvergne","green"), ("Auvergne-Rhône Alpes","cyan"), ('Bourgogne',"red"), 
-                   ('Franche Comté','orange'), ('Bourgogne-Franche Comté','olive') ]
-        title = 'Régularité des TER (en %)'
-    else:
-        # On teste que la région demandée existe bien
-        c.execute("SELECT DISTINCT Région FROM 'regularite-mensuelle-ter'")
-        reg = c.fetchall()
-
-        # Rq: reg est une liste de tuples
-        if (self.path_info[1],) in reg:
-          regions = [(self.path_info[1],"blue")]
-          title = 'Régularité des TER en région {} (en %)'.format(self.path_info[1])
-
-        # Région non trouvée -> erreur 404
-        else:
-            print ('Erreur nom')
-            self.send_error(404)
-            return None
-
-    
-    # configuration du tracé
-    fig1 = plt.figure(figsize=(18,6))
-    ax = fig1.add_subplot(111)
-    ax.set_ylim(bottom=80,top=100)
-    ax.grid(which='major', color='#888888', linestyle='-')
-    ax.grid(which='minor',axis='x', color='#888888', linestyle=':')
-    ax.xaxis.set_major_locator(pltd.YearLocator())
-    ax.xaxis.set_minor_locator(pltd.MonthLocator())
-    ax.xaxis.set_major_formatter(pltd.DateFormatter('%B %Y'))
-    ax.xaxis.set_tick_params(labelsize=10)
-    ax.xaxis.set_label_text("Date")
-    ax.yaxis.set_label_text("% de régularité")
-    
-    # boucle sur les régions
-    for l in (regions) :
-        c.execute("SELECT * FROM 'regularite-mensuelle-ter' WHERE Région=? ORDER BY Date",l[:1])  # ou (l[0],)
-        r = c.fetchall()
-
-        # recupération de la date (colonne 2) et transformation dans le format de pyplot
-        x = [pltd.date2num(dt.date(int(a[1][:4]),int(a[1][5:]),1)) for a in r if not a[7] == '']
-
-        # récupération de la régularité (colonne 8)
-        y = [float(a[7]) for a in r if not a[7] == '']
-
-        # tracé de la courbe
-        plt.plot_date(x,y,linewidth=1, linestyle='-', marker='o', color=l[1], label=l[0])
+    def courbe_station(self,courbes,id_station,jour_1,mois_1,annee_1,jour_2,mois_2,annee_2):
+        """fonction pour afficher les courbes par station"""
         
-    # légendes
-    plt.legend(loc='lower left')
-    plt.title(title,fontsize=16)
+        id_station = int(id_station)
+        c.execute('SELECT Ville from stations-meteo WHERE Numero = {}'.format(id_station))
+        nom_station = str(c.fetchall()).strip('[').strip(']').strip('(').strip(')').strip(',').strip("'")
 
-    # génération des courbes dans un fichier PNG
-    fichier = 'courbe_ponctualite.png'
-    plt.savefig('client/{}'.format(fichier))
+        
+        date1, date2 = '',''
+        date1 = int(annee_1+mois_1+jour_1)
+        date2 = int(annee_2+mois_2+jour_2)
 
-    # on envoie le code HTML de la balise img
-    html = '<img src="/{}?{}" alt="ponctualite {}" width="100%">'.format(fichier,self.date_time_string(),self.path)
-    headers = [('Content-Type','text/html;charset=utf-8')]
-    self.send(html,headers)
+        c.execute('SELECT TG, TN, TX, Q_TG, Q_TN, Q_TX, DATE from historique WHERE numéro = {} AND date >= {} AND date < {} ORDER BY date ASC'.format(id_station, date1, date2))
+        data = c.fetchall()
+        
+        Tmoy, Tmin, Tmax = [],[],[]
+        time=[]
+        TimeDate=[]
+        i=0
+        
+        for releves in data:
+            if releves[3]==0 and releves[4]==0 and releves[5]==0:
+                Tmoy.append(0.1*releves[0])
+                Tmin.append(0.1*releves[1])
+                Tmax.append(0.1*releves[2])
+                TimeDate.append(str(releves[6]))
+                time.append(i)
+            i+=1  
+        
+            
+            
+        plt.figure(figsize=(10,6), dpi=100)        
+        plt.grid(True)
+        plt.xlabel('Dates')
+        plt.ylabel('T en °C')
+        plt.title('        Relevé de températures sur la période ['+jour_1+'/'+mois_1+'/'+ \
+        annee_1+'-'+jour_2+'/'+mois_2+'/'+annee_2+'] à '+str(nom_station),fontsize=10)
 
-  #
-  # On envoie les entêtes et le corps fourni
-  #
-  def send(self,body,headers=[]):
+        n=len(time)    
+        
+        if courbes[0]==1:
+            
+            plt.plot(time, Tmin, label='Températures minimales',color='b')
+            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
+        
+        if courbes[1]==1:
+            plt.plot(time, Tmax, label='Températures maximales',color='r')
+            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
+            
+        if courbes[2]==1:
+            plt.plot(time, Tmoy, label='Températures moyennes',color='g')
+            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
+        
+        plt.legend(fontsize=10,loc=4)
+        plt.savefig('client/Plot/'+str(id_station)+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png',bbox_inches='tight')
+        titre=str(id_station)+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png'
+        
+        #Remplissage de la table courbe_stations
+        c.execute('INSERT INTO courbes_stations VALUES (?,?,?,?,?,?,?)',(titre,id_station,date1,date2,courbes[0],courbes[1],courbes[2]))
+        conn.commit()          
+        return(str(id_station)+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png')
+        
+        
+    def courbe_station_av(self,courbes,id_station,jour,mois):
+        """fonction pour afficher les courbes par station"""
+        
+        id_station = int(id_station)
+        c.execute('SELECT ville from stations-meteo WHERE Numero = {}'.format(id_station))
+        nom_station = str(c.fetchall()).strip('[').strip(']').strip('(').strip(')').strip(',').strip("'")
 
-    # on encode la chaine de caractères à envoyer
-    encoded = bytes(body, 'UTF-8')
+        
+        date = ''
+        date = int(mois+jour)
 
-    # on envoie la ligne de statut
-    self.send_response(200)
+        c.execute('SELECT Temp_moyennes, Temp_minimales, Temp_maximales, Q_TG, Q_TN, Q_TX, DATE from Historique_temp WHERE Numero = {} AND date % 10000 = {} ORDER BY date ASC'.format(id_station, date))
+        data = c.fetchall()
+        
+        time = range(1976,1976+len(data))
+        Tmoy, Tmin, Tmax = [],[],[]
+        
+        time=[]
+        TimeDate=[]
+        i=0
+        
+        for releves in data:
+            if releves[3]==0 and releves[4]==0 and releves[5]==0:
+                Tmoy.append(0.1*releves[0])
+                Tmin.append(0.1*releves[1])
+                Tmax.append(0.1*releves[2])
+                TimeDate.append(str(releves[6]))
+                time.append(i)
+            i+=1  
+        
+        
+        plt.figure(figsize=(10,6), dpi=100)        
+        plt.grid(True)
+        plt.xlabel('Années')
+        plt.ylabel('T en °C')
+        plt.title('        Relevé de températures au ['+jour+'/'+mois+'] sur 40 ans à '+str(nom_station),fontsize=10)
+        
+        n=len(time)
+        
+        if courbes[0]==1:
+            
+            plt.plot(time, Tmin, label='Températures minimales',color='b')
+            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
+        
+        if courbes[1]==1:
+            plt.plot(time, Tmax, label='Températures maximales',color='r')
+            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
+            
+        if courbes[2]==1:
+            plt.plot(time, Tmoy, label='Températures moyennes',color='g')
+            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
+        
+        plt.legend(fontsize=10,loc=4)
+        plt.savefig('client/Plot/'+str(id_station)+'_'+str(date)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png',bbox_inches='tight')
+        titre=str(id_station)+'_'+str(date)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png'
+        date1=int(str(date)+'1976')
+        date2=int(str(date)+'2016')
+        
+        #Remplissage de la table courbe_france
 
-    # on envoie les lignes d'entête et la ligne vide
-    [self.send_header(*t) for t in headers]
-    self.send_header('Content-Length',int(len(encoded)))
-    self.end_headers()
+        c.execute('INSERT INTO courbes_stations VALUES (?,?,?,?,?,?,?)',(titre,id_station,date1,date2,courbes[0],courbes[1],courbes[2]))
+        conn.commit()
+        return(str(id_station)+'_'+str(date)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png')
 
-    # on envoie le corps de la réponse
-    self.wfile.write(encoded)
 
- 
-#
-# Création de la connexion avec la base de données
-#
-conn = sqlite3.connect('ter.sqlite')
+    def courbe_nationale(self,courbes,jour_1,mois_1,annee_1,jour_2,mois_2,annee_2):
+        global c
+        """fonction pour afficher les courbes en faisant la moyenne nationale"""
+        
+        date1, date2 = '',''
+        date1 = int(annee_1+mois_1+jour_1)
+        date2 = int(annee_2+mois_2+jour_2)
+        
+        id_stations=[33,34,37,737,738,742,745,749,750,757,758,434,39,322,2207,11246,11249] #liste des station avec des données
+        #station sans données : 31,32,36,736,739,740,755,756,786,793,323,784,2184,2190,2192,2195,2196,2199,2200,2203,2205,2209,11243,11244,11245,11247,11248
 
-#
-# Instanciation et lancement du serveur
-#
-httpd = socketserver.TCPServer(("", 8080), RequestHandler)
+        TimeDate=[] #liste des dates
+        sta='33'
+        c.execute('SELECT DATE from historique WHERE numéro = {} AND date >= {} AND date < {} ORDER BY date ASC'.format(sta, date1, date2))
+        data = c.fetchall()
+        for k in data:
+            TimeDate.append(str(k[0]))
+    
+        Tmoy, Tmin, Tmax = [],[],[]  #listes des températures de chaque station
+        Qmoy, Qmin, Qmax = [],[],[] #liste des qualitées des mesures
+        for i in range(len(id_stations)):  
+            station=id_stations[i]
+            c.execute('SELECT Temp_moyennes, Temp_minimales, Temp_maximales, Q_TG, Q_TN, Q_TX from Historique-temp WHERE Numero = {} AND date >= {} AND date < {} ORDER BY date ASC'.format(station, date1, date2))
+            data = c.fetchall()
+            Tmoy.append([])
+            Tmin.append([])
+            Tmax.append([])
+            Qmoy.append([])
+            Qmin.append([])
+            Qmax.append([])    
+            for releves in data:
+                Tmoy[i].append(0.1*releves[0])
+                Tmin[i].append(0.1*releves[1])
+                Tmax[i].append(0.1*releves[2])
+                Qmoy[i].append(releves[3])
+                Qmin[i].append(releves[4])
+                Qmax[i].append(releves[5])
+        time = range(len(data))
+        
+        TempMoy,TempMin,TempMax=[],[],[]  #listes des températures à l'échelle nationale (moyenne des températures des stations)
+        for i in range(len(Tmoy[0])):
+            a,b,c=0,0,0
+            Nmoy=len(Tmoy)
+            Nmin=len(Tmin)
+            Nmax=len(Tmax)
+            N=Nmoy
+            for j in range(N):
+                if Qmoy[j][i]==0:        
+                    a+=Tmoy[j][i]
+                else:
+                    Nmoy+=-1 #si la mesure est éronnée ou fausse, on ne la prend pas en compte dans la moyenne
+                if Qmin[j][i]==0:
+                    b+=Tmin[j][i]
+                else:
+                    Nmin+=-1
+                if Qmax[j][i]==0:
+                    c+=Tmax[j][i]
+                else:
+                    Nmax+=-1
+            TempMoy.append(a/Nmoy)
+            TempMin.append(b/Nmin)
+            TempMax.append(c/Nmax)
+        
+
+        n=len(time)  
+        
+        plt.figure(figsize=(10,6), dpi=100)        
+        plt.grid(True)
+        plt.xlabel('Dates')
+        plt.ylabel('T en °C')
+        plt.title('        Relevé de températures sur la période ['+jour_1+'/'+mois_1+'/'+ \
+        annee_1+'-'+jour_2+'/'+mois_2+'/'+annee_2+'] au niveau national ',fontsize=10)
+        
+        if courbes[0]==1:
+            
+            plt.plot(time, TempMin, label='Températures minimales',color='b')
+            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
+        
+        if courbes[1]==1:
+            plt.plot(time, TempMax, label='Températures maximales',color='r')
+            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
+            
+        if courbes[2]==1:
+            plt.plot(time, TempMoy, label='Températures moyennes',color='g')
+            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
+        
+        plt.legend(fontsize=10,loc=4)
+        plt.savefig('client/Plot/'+'national'+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png',bbox_inches='tight')
+        titre='national'+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png'
+        #Remplissage de la table courbe_stations
+        c.execute('INSERT INTO courbes_france VALUES (?,?,?,?,?,?)',(titre,date1,date2,courbes[0],courbes[1],courbes[2]))
+        conn.commit()
+        return('national'+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png')
+
+
+    def courbe_nationale_av(self,courbes,jour,mois):
+        global c
+        """fonction pour afficher les courbes en faisant la moyenne nationale"""
+        
+        date1 = ''
+        date1 = int(mois+jour)
+        
+        id_stations=[33,34,37,737,738,742,745,749,750,757,758,434,39,322,2207,11246,11249] #liste des station avec des données
+        #station sans données : 31,32,36,736,739,740,755,756,786,793,323,784,2184,2190,2192,2195,2196,2199,2200,2203,2205,2209,11243,11244,11245,11247,11248
+
+        TimeDate=[] #liste des dates
+        sta='33'
+        c.execute('SELECT DATE from historique WHERE Numero = {} AND date % 10000 = {} ORDER BY date ASC'.format(sta, date1))
+        data = c.fetchall()
+        for k in data:
+            TimeDate.append(str(k[0]))
+    
+        Tmoy, Tmin, Tmax = [],[],[]  #listes des températures de chaque station
+        Qmoy, Qmin, Qmax = [],[],[] #liste des qualitées des mesures
+        for i in range(len(id_stations)):  
+            station=id_stations[i]
+            c.execute('SELECT Temp_moyennes, Temp_minimales, Temp_maximales, Q_TG, Q_TN, Q_TX from Historique_temp WHERE Numero = {} AND date % 10000 = {} ORDER BY date ASC'.format(station, date1))
+            data = c.fetchall()
+            Tmoy.append([])
+            Tmin.append([])
+            Tmax.append([])
+            Qmoy.append([])
+            Qmin.append([])
+            Qmax.append([])    
+            for releves in data:
+                Tmoy[i].append(0.1*releves[0])
+                Tmin[i].append(0.1*releves[1])
+                Tmax[i].append(0.1*releves[2])
+                Qmoy[i].append(releves[3])
+                Qmin[i].append(releves[4])
+                Qmax[i].append(releves[5])
+        time = range(len(data))
+        
+        TempMoy,TempMin,TempMax=[],[],[]  #listes des températures à l'échelle nationale (moyenne des températures des stations)
+        for i in range(len(Tmoy[0])):
+            a,b,c=0,0,0
+            Nmoy=len(Tmoy)
+            Nmin=len(Tmin)
+            Nmax=len(Tmax)
+            N=Nmoy
+            for j in range(N):
+                if Qmoy[j][i]==0:        
+                    a+=Tmoy[j][i]
+                else:
+                    Nmoy+=-1 #si la mesure est éronnée ou fausse, on ne la prend pas en compte dans la moyenne
+                if Qmin[j][i]==0:
+                    b+=Tmin[j][i]
+                else:
+                    Nmin+=-1
+                if Qmax[j][i]==0:
+                    c+=Tmax[j][i]
+                else:
+                    Nmax+=-1
+            TempMoy.append(a/Nmoy)
+            TempMin.append(b/Nmin)
+            TempMax.append(c/Nmax)
+        
+
+        n=len(time)  
+        
+        plt.figure(figsize=(10,6), dpi=100)        
+        plt.grid(True)
+        plt.xlabel('Dates')
+        plt.ylabel('T en °C')
+        plt.title('        Relevé de températures au ['+jour+'/'+mois+'] sur 40 ans au niveau national ',fontsize=10)
+        
+        if courbes[0]==1:
+            
+            plt.plot(time, TempMin, label='Températures minimales',color='b')
+            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
+        
+        if courbes[1]==1:
+            plt.plot(time, TempMax, label='Températures maximales',color='r')
+            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
+            
+        if courbes[2]==1:
+            plt.plot(time, TempMoy, label='Températures moyennes',color='g')
+            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
+        
+        plt.legend(fontsize=10,loc=4)
+        plt.savefig('Client/Plot/'+'national'+'_'+str(date1)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png',bbox_inches='tight')
+        titre='national'+'_'+str(date1)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png'
+        date0=int(str(date1)+'1976')
+        date2=int(str(date1)+'2016')
+        #Remplissage de la table courbe_france
+        c.execute('INSERT INTO courbes_france VALUES (?,?,?,?,?,?)',(titre,date0,date2,courbes[0],courbes[1],courbes[2]))
+        conn.commit()
+        return('national'+'_'+str(date1)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png')
+
+
+
+
+
+# instanciation et lancement du serveur
+httpd = socketserver.TCPServer(("", 80), RequestHandler)
 httpd.serve_forever()
-

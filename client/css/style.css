@@ -7,13 +7,13 @@
 
 
 body{
-    background-color:#af2179 ;
-    overflow: hidden;
+    background-color:#F7DDC4 ;
 }
 
 nav{
     background-color: #FCFAFA;
     height:100vh;
+    position: fixed;
 }
 
 main{
@@ -84,7 +84,7 @@ label{
 /*end of search bar style */
 
 /*welcome text style*/
-#welcome{
+#welcome,#station-name{
     font-size: 1.6em;
     color: #656565;
     margin-left: 12%;
@@ -185,7 +185,7 @@ label{
     width: 20px;
     height: 20px;
     background-color:#F7DDC4 ;
-    left: 0%;
+    left: 3%;
     top: 0px;
     border: 2px solid #ffffff;
     opacity: 0;
@@ -196,7 +196,51 @@ label{
 	opacity: 1;
 }
 
+
+::-webkit-datetime-edit-text { padding: 0 0.3em; }
+::-webkit-datetime-edit-month-field { color: #a1a1a1; }
+::-webkit-datetime-edit-day-field { color: #a1a1a1; }
+::-webkit-datetime-edit-year-field { color: #a1a1a1; }
+
 /*end of filtre style*/
+
+
+/*toggle style*/
+
+#toggle-button{
+    margin-left: 2%;
+    margin-top: 2%;
+}
+
+#nav-courbes{
+    z-index: 999;
+    overflow-y: scroll;
+}
+
+/* starting state */
+.opened{
+    transform: translateX(0); /* move it back to original spot */
+    transition: transform 0.5s cubic-bezier(0.895, 0.03, 0.685, 0.22);
+  }
+  
+/* end state */
+.hidden {
+    transform: translateX(-100%); /* move it horizontally off the page */
+    transition: transform 0.5s cubic-bezier(0.895, 0.03, 0.685, 0.22);
+}
+
+
+.courbes .row{
+    margin-top: 15%;
+}
+
+.courbes .row h1{
+    margin-bottom: 15%;
+    text-align: center;
+}
+
+/*end of toggle style*/
+
 
 
 
@@ -205,8 +249,10 @@ label{
 /*map style*/
 
 #map { 
+    position: fixed;
+    left: 33%;
     height: 94%;
-    width: 98%; 
+    width: 66%; 
     margin-top:1%
 }
 

@@ -5,18 +5,39 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!--javascript libraries--> 
-    <script src="javascript/leaflet/leaflet.js"> // insertion bibliothèque Leaflet : http://leafletjs.com/ </script>
+    <script src="leaflet/leaflet.js"> // insertion bibliothèque Leaflet : http://leafletjs.com/ </script>
     <script src="javascript/index.js"></script>
     <!-- CSS only -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-+0n0xVW2eSR5OomGNYDnhzAbDsOXxcvSN1TPprVMTNDbiYZCxYbOOl7+AMvyTG2x" crossorigin="anonymous">
-    <link rel="stylesheet" type="text/css" href="css/leaflet.css" /> 
+    <link rel="stylesheet" type="text/css" href="leaflet/leaflet.css" /> 
     <link rel="stylesheet" type="text/css" href="css/style.css"/>
     <!-- Load icon library -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <title>ProjetE: Temperatures France</title>
 </head>
-<body>
+<body onload="load_data()">  <!-- Récupération des données avec le chargement de la page -->
     <div class="row">
+        <nav class="col-4 opened" id="nav-courbes">
+            <button id="toggle-button" onclick="toggleIn()" ><i class="fa fa-arrow-left" aria-hidden="true"></i></button>
+            <div style="margin: 5%;">
+                <h1 id="station-name">Station</h1>
+                <a style="margin: 10%;" href="https://donneespubliques.meteofrance.fr/">https://donneespubliques.meteofrance.fr/</a>
+            </div>
+            <div class="col courbes" style="margin: 5%;">
+                <div class="row" >
+                    <h1 class="filtrer">Courbe d'evolution de la temperature moyenne depuis: </h1>
+                    <img src="images/oops.png"/>
+                </div>
+                <div class="row">
+                    <h1 class="filtrer">Courbe d'evolution de la temperature minimale depuis: </h1>
+                    <img src="images/oops.png"/>
+                </div>
+                <div class="row">
+                    <h1 class="filtrer">Courbe d'evolution de la temperature maximale depuis: </h1>
+                    <img src="images/oops.png"/>
+                </div>
+            </div>
+        </nav>
         <nav class="col-4">
             <!--search bar-->
             <div class="container">
@@ -52,17 +73,17 @@
                     <input type="checkbox" name="Temp_moy" checked/>
                     <label>Températures moyennes</label>
                     <div class="bullet-square"></div>
-                </span>
+                </span><br/>
                 <span>
                     <input type="checkbox" name="Temp_max" />
                     <label>Temperatures maximales</label>
                     <div class="bullet-square"></div>
-                </span>
+                </span><br/>
                 <span>
                     <input type="checkbox" name="Temp_min" />
                     <label>Temperatures minimales</label>
                     <div class="bullet-square"></div>
-                </span>
+                </span><br/>
             </div>
                   
                     
@@ -82,10 +103,59 @@
     <script>
         // Creation d'une carte dans la balise div "map", et positionne la vue sur un point donné et un niveau de zoom
         var map = L.map('map').setView([46.5,2.5], 5);
+
         // Ajout d'une couche de dalles OpenStreetMap
         L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
+
+         
+        function load_data () {
+        var xhr = new XMLHttpRequest();
+        xhr.onload = function() {   // fonction callback
+            // récupération des données renvoyées par le serveur
+            var data = JSON.parse(this.responseText);
+            console.log(data);
+            // boucle sur les enregistrements renvoyés
+            for ( n = 0; n < data.length; n++ ) {
+            // insertion d'un marqueur à la position, attachement d'une popup, capture de l'évènement "clic'
+            L.marker([data[n].lat,data[n].lon]).addTo(map)
+                .bindPopup('Station : '+data[n].ville)
+                .addEventListener("click",OnMarkerClick)
+                .idnum=data[n].num;   // propriété personnalisée ajouté au marqueur
+            }
+        };
+        xhr.open('GET','/location_station',true);
+        xhr.send();
+        }
+        
+        function OnMarkerClick (e,f) {
+        var xhr = new XMLHttpRequest();
+        toggleOut();
+        xhr.onload = function() {   // fonction callback
+            // récupération des données renvoyées par le serveur
+            var data = JSON.parse(this.responseText);
+            // affichage dans la zone 'description' du nom (reprise dans le popup) et de la description récupéré par l'appel au serveur
+            description.innerHTML =  '<b><i>' + e.target.getPopup().getContent() + '</i></b><br>'+ data.desc;
+            
+        };
+        document.getElementById("station-name").innerHTML=e.target.getPopup().getContent()
+        
+        }
+        function toggleIn(){
+            //toggle in nav bar
+            let menu= document.getElementById('nav-courbes');
+            menu.classList.remove('opened');
+            menu.classList.add('hidden');
+        }
+
+        function toggleOut(){
+            //toggle out nav bar
+            let menu= document.getElementById('nav-courbes');
+            menu.classList.remove('hidden');
+            menu.classList.add('opened');
+        }
+     
     </script>
 
 
