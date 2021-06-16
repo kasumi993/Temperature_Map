@@ -43,9 +43,11 @@
             <div class="container">
                 <h1 class="heading">Recherche de stations...</h1>
                 <div class="searchInputWrapper">
-                <input class="searchInput" type="text" placeholder='Recherche de stations...'>
+                <input class="searchInput" id="searchInput" type="text" placeholder='Recherche de stations...'>
                 <i class="searchInputIcon fa fa-search"></i>
                 </input>
+			    <ul class="suggestionBox" id="suggestionBox">
+			    </ul>
                 </div>
             </div>
             <!--end of search bar-->
@@ -100,13 +102,17 @@
         attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-         
-        function load_data () {
+        document.getElementById("choix_pays").addEventListener('focus',markerUpdate);
+        function markerUpdate(){
+            
+        }
+        var station_list;
+        function load_data (choice) {
         var xhr = new XMLHttpRequest();
         xhr.onload = function() {   // fonction callback
             // récupération des données renvoyées par le serveur
             var data = JSON.parse(this.responseText);
-            console.log(data);
+            station_list=data;
             // boucle sur les enregistrements renvoyés
             for ( n = 0; n < data.length; n++ ) {
             // insertion d'un marqueur à la position, attachement d'une popup, capture de l'évènement "clic'
@@ -124,10 +130,12 @@
             toggleOut();
             
             var id_station = e.target.idnum;
-            if(document.getElementById("choix_station").value!=""){
+            if(document.getElementById("choix_station").checked==true){
+                console.log(document.getElementById("choix_station").value);
                var zone = document.getElementById("choix_station").value;
             }
             else{
+               console.log(document.getElementById("choix_pays").value);
                var zone = document.getElementById("choix_pays").value;
             }
             
@@ -145,21 +153,26 @@
             var xhr = new XMLHttpRequest();
             xhr.open('POST', 'recherches', true);
             xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+            img_moy.src="images/loading.gif";
+            img_min.src="images/loading.gif";
+            img_max.src="images/loading.gif";
             xhr.onload = function () {
                 // do something to response
                 var data = JSON.parse(this.responseText);
                 //affichage des courbe moyenne, min et max
-                img_moy.src='Plot/'+data[0].nom_courbe_moy
+                img_moy.src='Plot/'+data[0].nom_courbe_moy;
                 img_moy.onerror = function(e) {
                     document.getElementById("img_moy").src="images/oops.png"
                 };
 
-                img_min.src='Plot/'+data[0].nom_courbe_min
+                
+                img_min.src='Plot/'+data[0].nom_courbe_min;
                 img_min.onerror = function(e) {
                     document.getElementById("img_min").src="images/oops.png"
                 };
 
-                img_max.src='Plot/'+data[0].nom_courbe_max
+               
+                img_max.src='Plot/'+data[0].nom_courbe_max;
                 img_max.onerror = function(e) {
                     document.getElementById("img_max").src="images/oops.png"
                 };
@@ -188,9 +201,26 @@
             menu.classList.remove('hidden');
             menu.classList.add('opened');
         }
-     
 
+        document.getElementById("searchInput").addEventListener("focus",research_suggest);
+        document.getElementById("searchInput").addEventListener("blur",suggestOff);
+        var suggest=document.getElementById('suggestionBox');
+        function research_suggest(){
+            console.log(station_list);
+            suggest.classList.remove('off');
+            suggest.classList.add('toggled');
+            for ( n = 0; n < station_list.length; n++ ) {
+                var li=document.createElement("li")
+                li.className=station_list[n].ville;
+                li.innerHTML=station_list[n].ville;
+                suggest.appendChild(li);
+            }
+        }
 
+        function suggestOff(){
+            suggest.classList.remove('toggled');
+            suggest.classList.add('off');
+        }
 
     </script>
 

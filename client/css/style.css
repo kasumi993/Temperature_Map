@@ -81,6 +81,30 @@ label{
     right: 0.2rem;
 }
 
+/* starting state */
+.toggled{
+    display:inline-block;
+    position: absolute;
+    left: 5%;
+    top: 100%;
+    width: 100%;
+    height: 400px;
+    z-index: 999;
+    background-color: #ffffff;
+    color: #a1a1a1;
+    overflow-y: scroll;
+  }
+
+.off{
+    display: none;
+}
+  
+/* end state */
+.hidden {
+    transform: translateX(-100%); /* move it horizontally off the page */
+    transition: transform 0.5s cubic-bezier(0.895, 0.03, 0.685, 0.22);
+}
+
 /*end of search bar style */
 
 /*welcome text style*/

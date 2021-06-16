@@ -115,14 +115,13 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
       self.mois_fin = self.end_date[1]
       self.annee_debut = self.start_date[0]
       self.annee_fin =self.end_date[0]
-      self.zone = self.params['zone'][0]      
-      self.courbes = [0,0,0]
+      self.zone = self.params['zone'][0]   
       
                     
       if self.zone == 'france':
-          nom_courbe_moy = self.courbe_nationale([1,0,0],self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
-          nom_courbe_min = self.courbe_nationale([0,1,0],self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
-          nom_courbe_max = self.courbe_nationale([0,0,1],self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
+          nom_courbe_moy = courbe_nationale([0,0,1],self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
+          nom_courbe_min = courbe_nationale([1,0,0],self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
+          nom_courbe_max = courbe_nationale([0,1,0],self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
           donnee['nom_courbe_moy']=nom_courbe_moy
           donnee['nom_courbe_min']=nom_courbe_min
           donnee['nom_courbe_max']=nom_courbe_max
@@ -131,9 +130,9 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
 
       else:
           self.id_station = int(self.params['id_station'][0])
-          nom_courbe_moy = self.courbe_station([1,0,0],self.id_station,self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
-          nom_courbe_min = self.courbe_station([0,1,0],self.id_station,self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
-          nom_courbe_max = self.courbe_station([0,0,1],self.id_station,self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
+          nom_courbe_moy = self.courbe_station([0,0,1],self.id_station,self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
+          nom_courbe_min = self.courbe_station([1,0,0],self.id_station,self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
+          nom_courbe_max = self.courbe_station([0,1,0],self.id_station,self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
           donnee['nom_courbe_moy']=nom_courbe_moy
           donnee['nom_courbe_min']=nom_courbe_min
           donnee['nom_courbe_max']=nom_courbe_max
@@ -280,260 +279,101 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         return(str(id_station)+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png')
         
         
-  def courbe_station_av(self,courbes,id_station,jour,mois):
-        """fonction pour afficher les courbes par station"""
-        
-        id_station = int(id_station)
-        c.execute("SELECT Ville from 'stations-meteo' WHERE Numero = {}".format(id_station))
-        nom_station = str(c.fetchall()).strip('[').strip(']').strip('(').strip(')').strip(',').strip("'")
+ 
+def courbe_nationale(courbes,jour_1,mois_1,annee_1,jour_2,mois_2,annee_2):
+    """fonction pour afficher les courbes en faisant la moyenne nationale"""
+    
+    date1, date2 = '',''
+    date1 = int(annee_1+mois_1+jour_1)
+    date2 = int(annee_2+mois_2+jour_2)
+    
+    id_stations=[33,34,37,737,738,742,745,749,750,757,758,434,39,322,2207,11246,11249] #liste des station avec des données
+    #station sans données : 31,32,36,736,739,740,755,756,786,793,323,784,2184,2190,2192,2195,2196,2199,2200,2203,2205,2209,11243,11244,11245,11247,11248
+    conn=sqlite3.connect('TemperatureDB.db')
+    c=conn.cursor() 
 
-        
-        date = ''
-        date = int(mois+jour)
-
-        c.execute('SELECT Temp_moyennes, Temp_minimales, Temp_maximales, Q_TG, Q_TN, Q_TX, DATE from Historique_temp WHERE Numero = {} AND date % 10000 = {} ORDER BY date ASC'.format(id_station, date))
+    TimeDate=[] #liste des dates
+    sta='33'
+    c.execute('SELECT DATE from Historique_Temp WHERE Numero = {} AND date >= {} AND date < {} ORDER BY date ASC'.format(sta, date1, date2))
+    data = c.fetchall()
+    for k in data:
+        TimeDate.append(str(k[0]))
+   
+    Tmoy, Tmin, Tmax = [],[],[]  #listes des températures de chaque station
+    Qmoy, Qmin, Qmax = [],[],[] #liste des qualitées des mesures
+    for i in range(len(id_stations)):  
+        station=id_stations[i]
+        c.execute('SELECT Temp_moyennes, Temp_minimales, Temp_maximales, Q_TG, Q_TN, Q_TX, from Historique_Temp WHERE Numero = {} AND date >= {} AND date < {} ORDER BY date ASC'.format(station, date1, date2))
         data = c.fetchall()
-        
-        time = range(1976,1976+len(data))
-        Tmoy, Tmin, Tmax = [],[],[]
-        
-        time=[]
-        TimeDate=[]
-        i=0
-        
+        Tmoy.append([])
+        Tmin.append([])
+        Tmax.append([])
+        Qmoy.append([])
+        Qmin.append([])
+        Qmax.append([])    
         for releves in data:
-            if releves[3]==0 and releves[4]==0 and releves[5]==0:
-                Tmoy.append(0.1*releves[0])
-                Tmin.append(0.1*releves[1])
-                Tmax.append(0.1*releves[2])
-                TimeDate.append(str(releves[6]))
-                time.append(i)
-            i+=1  
-        
-        
-        plt.figure(figsize=(10,6), dpi=100)        
-        plt.grid(True)
-        plt.xlabel('Années')
-        plt.ylabel('T en °C')
-        plt.title('        Relevé de températures au ['+jour+'/'+mois+'] sur 40 ans à '+str(nom_station),fontsize=10)
-        
-        n=len(time)
-        
-        if courbes[0]==1:
-            
-            plt.plot(time, Tmin, label='Températures minimales',color='b')
-            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
-        
-        if courbes[1]==1:
-            plt.plot(time, Tmax, label='Températures maximales',color='r')
-            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
-            
-        if courbes[2]==1:
-            plt.plot(time, Tmoy, label='Températures moyennes',color='g')
-            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
-        
-        plt.legend(fontsize=10,loc=4)
-        plt.savefig('client/Plot/'+str(id_station)+'_'+str(date)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png',bbox_inches='tight')
-        titre=str(id_station)+'_'+str(date)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png'
-        date1=int(str(date)+'1976')
-        date2=int(str(date)+'2020')
-        
-        #Remplissage de la table courbe_france
-
-        c.execute('INSERT INTO courbes_stations VALUES (?,?,?,?,?,?,?)',(titre,id_station,date1,date2,courbes[0],courbes[1],courbes[2]))
-        conn.commit()
-        return(str(id_station)+'_'+str(date)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png')
-
-
-  def courbe_nationale(self,courbes,jour_1,mois_1,annee_1,jour_2,mois_2,annee_2):
-        global c
-        """fonction pour afficher les courbes en faisant la moyenne nationale"""
-        
-        date1, date2 = '',''
-        date1 = int(annee_1+mois_1+jour_1)
-        date2 = int(annee_2+mois_2+jour_2)
-        
-        id_stations=[33,34,37,737,738,742,745,749,750,757,758,434,39,322,2207,11246,11249] #liste des station avec des données
-        #station sans données : 31,32,36,736,739,740,755,756,786,793,323,784,2184,2190,2192,2195,2196,2199,2200,2203,2205,2209,11243,11244,11245,11247,11248
-
-        TimeDate=[] #liste des dates
-        sta='33'
-        c.execute('SELECT DATE from Historique_Temp WHERE Numero = {} AND date >= {} AND date < {} ORDER BY date ASC'.format(sta, date1, date2))
-        data = c.fetchall()
-        for k in data:
-            TimeDate.append(str(k[0]))
+            Tmoy[i].append(0.1*releves[0])
+            Tmin[i].append(0.1*releves[1])
+            Tmax[i].append(0.1*releves[2])
+            Qmoy[i].append(releves[3])
+            Qmin[i].append(releves[4])
+            Qmax[i].append(releves[5])
+    time = range(len(data))
     
-        Tmoy, Tmin, Tmax = [],[],[]  #listes des températures de chaque station
-        Qmoy, Qmin, Qmax = [],[],[] #liste des qualitées des mesures
-        for i in range(len(id_stations)):  
-            station=id_stations[i]
-            c.execute('SELECT Temp_moyennes, Temp_minimales, Temp_maximales, Q_TG, Q_TN, Q_TX from Historique-temp WHERE Numero = {} AND date >= {} AND date < {} ORDER BY date ASC'.format(station, date1, date2))
-            data = c.fetchall()
-            Tmoy.append([])
-            Tmin.append([])
-            Tmax.append([])
-            Qmoy.append([])
-            Qmin.append([])
-            Qmax.append([])    
-            for releves in data:
-                Tmoy[i].append(0.1*releves[0])
-                Tmin[i].append(0.1*releves[1])
-                Tmax[i].append(0.1*releves[2])
-                Qmoy[i].append(releves[3])
-                Qmin[i].append(releves[4])
-                Qmax[i].append(releves[5])
-        time = range(len(data))
-        
-        TempMoy,TempMin,TempMax=[],[],[]  #listes des températures à l'échelle nationale (moyenne des températures des stations)
-        for i in range(len(Tmoy[0])):
-            a,b,c=0,0,0
-            Nmoy=len(Tmoy)
-            Nmin=len(Tmin)
-            Nmax=len(Tmax)
-            N=Nmoy
-            for j in range(N):
-                if Qmoy[j][i]==0:        
-                    a+=Tmoy[j][i]
-                else:
-                    Nmoy+=-1 #si la mesure est éronnée ou fausse, on ne la prend pas en compte dans la moyenne
-                if Qmin[j][i]==0:
-                    b+=Tmin[j][i]
-                else:
-                    Nmin+=-1
-                if Qmax[j][i]==0:
-                    c+=Tmax[j][i]
-                else:
-                    Nmax+=-1
-            TempMoy.append(a/Nmoy)
-            TempMin.append(b/Nmin)
-            TempMax.append(c/Nmax)
-        
-
-        n=len(time)  
-        
-        plt.figure(figsize=(10,6), dpi=100)        
-        plt.grid(True)
-        plt.xlabel('Dates')
-        plt.ylabel('T en °C')
-        plt.title('        Relevé de températures sur la période ['+jour_1+'/'+mois_1+'/'+ \
-        annee_1+'-'+jour_2+'/'+mois_2+'/'+annee_2+'] au niveau national ',fontsize=10)
-        
-        if courbes[0]==1:
-            
-            plt.plot(time, TempMin, label='Températures minimales',color='b')
-            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
-        
-        if courbes[1]==1:
-            plt.plot(time, TempMax, label='Températures maximales',color='r')
-            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
-            
-        if courbes[2]==1:
-            plt.plot(time, TempMoy, label='Températures moyennes',color='g')
-            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
-        
-        plt.legend(fontsize=10,loc=4)
-        plt.savefig('client/Plot/'+'national'+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png',bbox_inches='tight')
-        titre='national'+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png'
-        #Remplissage de la table courbe_stations
-        c.execute('INSERT INTO courbes_france VALUES (?,?,?,?,?,?)',(titre,date1,date2,courbes[0],courbes[1],courbes[2]))
-        conn.commit()
-        return('national'+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png')
-
-
-  def courbe_nationale_av(self,courbes,jour,mois):
-        global c
-        """fonction pour afficher les courbes en faisant la moyenne nationale"""
-        
-        date1 = ''
-        date1 = int(mois+jour)
-        
-        id_stations=[33,34,37,737,738,742,745,749,750,757,758,434,39,322,2207,11246,11249] #liste des station avec des données
-        #station sans données : 31,32,36,736,739,740,755,756,786,793,323,784,2184,2190,2192,2195,2196,2199,2200,2203,2205,2209,11243,11244,11245,11247,11248
-
-        TimeDate=[] #liste des dates
-        sta='33'
-        c.execute('SELECT DATE from Historique_Temp WHERE Numero = {} AND date % 10000 = {} ORDER BY date ASC'.format(sta, date1))
-        data = c.fetchall()
-        for k in data:
-            TimeDate.append(str(k[0]))
+    TempMoy,TempMin,TempMax=[],[],[]  #listes des températures à l'échelle nationale (moyenne des températures des stations)
+    for i in range(len(Tmoy[0])):
+        a,b,c=0,0,0
+        Nmoy=len(Tmoy)
+        Nmin=len(Tmin)
+        Nmax=len(Tmax)
+        N=Nmoy
+        for j in range(N):
+            if Qmoy[j][i]==0:        
+                a+=Tmoy[j][i]
+            else:
+                Nmoy+=-1 #si la mesure est éronnée ou fausse, on ne la prend pas en compte dans la moyenne
+            if Qmin[j][i]==0:
+                b+=Tmin[j][i]
+            else:
+                Nmin+=-1
+            if Qmax[j][i]==0:
+                c+=Tmax[j][i]
+            else:
+                Nmax+=-1
+        TempMoy.append(a/Nmoy)
+        TempMin.append(b/Nmin)
+        TempMax.append(c/Nmax)
     
-        Tmoy, Tmin, Tmax = [],[],[]  #listes des températures de chaque station
-        Qmoy, Qmin, Qmax = [],[],[] #liste des qualitées des mesures
-        for i in range(len(id_stations)):  
-            station=id_stations[i]
-            c.execute('SELECT Temp_moyennes, Temp_minimales, Temp_maximales, Q_TG, Q_TN, Q_TX from Historique_temp WHERE Numero = {} AND date % 10000 = {} ORDER BY date ASC'.format(station, date1))
-            data = c.fetchall()
-            Tmoy.append([])
-            Tmin.append([])
-            Tmax.append([])
-            Qmoy.append([])
-            Qmin.append([])
-            Qmax.append([])    
-            for releves in data:
-                Tmoy[i].append(0.1*releves[0])
-                Tmin[i].append(0.1*releves[1])
-                Tmax[i].append(0.1*releves[2])
-                Qmoy[i].append(releves[3])
-                Qmin[i].append(releves[4])
-                Qmax[i].append(releves[5])
-        time = range(len(data))
-        
-        TempMoy,TempMin,TempMax=[],[],[]  #listes des températures à l'échelle nationale (moyenne des températures des stations)
-        for i in range(len(Tmoy[0])):
-            a,b,c=0,0,0
-            Nmoy=len(Tmoy)
-            Nmin=len(Tmin)
-            Nmax=len(Tmax)
-            N=Nmoy
-            for j in range(N):
-                if Qmoy[j][i]==0:        
-                    a+=Tmoy[j][i]
-                else:
-                    Nmoy+=-1 #si la mesure est éronnée ou fausse, on ne la prend pas en compte dans la moyenne
-                if Qmin[j][i]==0:
-                    b+=Tmin[j][i]
-                else:
-                    Nmin+=-1
-                if Qmax[j][i]==0:
-                    c+=Tmax[j][i]
-                else:
-                    Nmax+=-1
-            TempMoy.append(a/Nmoy)
-            TempMin.append(b/Nmin)
-            TempMax.append(c/Nmax)
-        
 
-        n=len(time)  
+    n=len(time)  
+      
+    plt.figure(figsize=(10,6), dpi=100)        
+    plt.grid(True)
+    plt.xlabel('Dates')
+    plt.ylabel('T en °C')
+    plt.title('        Relevé de températures sur la période ['+jour_1+'/'+mois_1+'/'+ \
+    annee_1+'-'+jour_2+'/'+mois_2+'/'+annee_2+'] au niveau national ',fontsize=10)
+    
+    if courbes[0]==1:
         
-        plt.figure(figsize=(10,6), dpi=100)        
-        plt.grid(True)
-        plt.xlabel('Dates')
-        plt.ylabel('T en °C')
-        plt.title('        Relevé de températures au ['+jour+'/'+mois+'] sur 40 ans au niveau national ',fontsize=10)
+        plt.plot(time, TempMin, label='Températures minimales',color='b')
+        plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
+    
+    if courbes[1]==1:
+        plt.plot(time, TempMax, label='Températures maximales',color='r')
+        plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
         
-        if courbes[0]==1:
-            
-            plt.plot(time, TempMin, label='Températures minimales',color='b')
-            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
-        
-        if courbes[1]==1:
-            plt.plot(time, TempMax, label='Températures maximales',color='r')
-            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
-            
-        if courbes[2]==1:
-            plt.plot(time, TempMoy, label='Températures moyennes',color='g')
-            plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
-        
-        plt.legend(fontsize=10,loc=4)
-        plt.savefig('Client/Plot/'+'national'+'_'+str(date1)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png',bbox_inches='tight')
-        titre='national'+'_'+str(date1)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png'
-        date0=int(str(date1)+'1976')
-        date2=int(str(date1)+'2020')
-        #Remplissage de la table courbe_france
-        c.execute('INSERT INTO courbes_france VALUES (?,?,?,?,?,?)',(titre,date0,date2,courbes[0],courbes[1],courbes[2]))
-        conn.commit()
-        return('national'+'_'+str(date1)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png')
-
+    if courbes[2]==1:
+        plt.plot(time, TempMoy, label='Températures moyennes',color='g')
+        plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
+    
+    plt.legend(fontsize=10,loc=4)
+    plt.savefig('Client/Plot/'+'national'+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png',bbox_inches='tight')
+    titre='national'+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png'
+    #Remplissage de la table courbe_stations
+    c.execute('INSERT INTO courbes_france VALUES (?,?,?,?,?,?)',(titre,date1,date2,courbes[0],courbes[1],courbes[2]))
+    conn.commit()
+    return('national'+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png')
 
 
 
