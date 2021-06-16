@@ -26,15 +26,15 @@
             <div class="col courbes" style="margin: 5%;">
                 <div class="row" >
                     <h1 class="filtrer">Courbe d'evolution de la temperature moyenne depuis: </h1>
-                    <img src="images/oops.png"/>
+                    <img id="img_moy" src="images/loading.gif"/>
                 </div>
                 <div class="row">
                     <h1 class="filtrer">Courbe d'evolution de la temperature minimale depuis: </h1>
-                    <img src="images/oops.png"/>
+                    <img id="img_min" src="images/loading.gif"/>
                 </div>
                 <div class="row">
                     <h1 class="filtrer">Courbe d'evolution de la temperature maximale depuis: </h1>
-                    <img src="images/oops.png"/>
+                    <img id="img_max" src="images/loading.gif"/>
                 </div>
             </div>
         </nav>
@@ -54,36 +54,34 @@
                 <p id="citations">“Limaçon aventureux, le temps sera pluvieux.”</p>
             </div>
 
-            <div class="filtrage-box zone">
-                <h1 class="filtrer">Filtrer l'affichage par:</h1>
-                <span>
-                    <input type="radio" name="radio" checked/>
-                    <label>Stations</label>
-                    <div class="bullet"></div>
-                </span>
-                <span>
-                    <input type="radio" name="radio" />
-                    <label>Région</label>
-                    <div class="bullet"></div>
-                </span>
-            </div>
-                  
-                    
-            <div class="filtrage-box">
-                <form name="formulaire" action="recherches" method="POST" onsubmit="return true"></form>
-                    <h1 class="filtrer" >Periode:</h1>
-                    <input id="start" type="date" name="datepicker"  placeholder="Du..." min="1968-01-01" max="2021-6-6">
-                    <input id="end" type="date" name="datepicker" placeholder="Au..." min="1968-01-01" max="2021-6-6">
-                    <input type="submit" value="valider"/>
-                </form>
-            </div> 
-
             <div class="filtrage-box">  
                 <div class="row">
-                    <div class="col-2"><img src="images/kiwi.png" width="50px"/></div>
+                    <div class="col-2"><img src="images/kiwi.png" width="40px"/></div>
                     <p class="col-8 kiwi-text">Choisis tes paramètres puis appuies sur une zone sur la carte pour voir ses données</p>   
                 </div>
             </div>
+
+            <div class="filtrage-box zone">
+                <form name="formulaire">
+                    <h1 class="filtrer">Filtrer l'affichage par:</h1>
+                    <span>
+                        <input id="id_station" type="number"  name="id_station" step="1" value="37" style="display: none;"/>
+                        <input id="choix_station" type="radio" name="zone" value="stations" checked/>
+                        <label>Stations</label>
+                        <div class="bullet"></div>
+                    </span>
+                    <span>
+                        <input id="choix_pays" type="radio" name="zone" value="france"/>
+                        <label>Pays</label>
+                        <div class="bullet"></div>
+                    </span>
+                    
+                    <h1 class="filtrer" style="margin-top: 8%; margin-bottom: 3%;">Periode:</h1>
+                    <input id="start" type="date" name="datepicker_start"  placeholder="Du..." min="1968-01-01" max="2020-07-31">
+                    <input id="end" type="date" name="datepicker_end" placeholder="Au..." min="1968-02-01" max="2020-10-31">
+                    
+                </form>
+            </div> 
 
         </nav>
 
@@ -123,18 +121,60 @@
         }
         
         function OnMarkerClick (e,f) {
-        var xhr = new XMLHttpRequest();
-        toggleOut();
-        xhr.onload = function() {   // fonction callback
-            // récupération des données renvoyées par le serveur
-            var data = JSON.parse(this.responseText);
-            // affichage dans la zone 'description' du nom (reprise dans le popup) et de la description récupéré par l'appel au serveur
-            description.innerHTML =  '<b><i>' + e.target.getPopup().getContent() + '</i></b><br>'+ data.desc;
+            toggleOut();
             
-        };
-        document.getElementById("station-name").innerHTML=e.target.getPopup().getContent()
-        
+            var id_station = e.target.idnum;
+            if(document.getElementById("choix_station").value!=""){
+               var zone = document.getElementById("choix_station").value;
+            }
+            else{
+               var zone = document.getElementById("choix_pays").value;
+            }
+            
+            var datepicker_start = document.getElementById("start").value;
+            var datepicker_end = document.getElementById("end").value;
+
+            //recupération de l'image courbe moy
+            var img_moy = document.getElementById("img_moy"); 
+            //recupération de l'image courbe min
+            var img_min = document.getElementById("img_min"); 
+            //récupération de l'image courbe max
+            var img_max = document.getElementById("img_max"); 
+
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', 'recherches', true);
+            xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+            xhr.onload = function () {
+                // do something to response
+                var data = JSON.parse(this.responseText);
+                //affichage des courbe moyenne, min et max
+                img_moy.src='Plot/'+data[0].nom_courbe_moy
+                img_moy.onerror = function(e) {
+                    document.getElementById("img_moy").src="images/oops.png"
+                };
+
+                img_min.src='Plot/'+data[0].nom_courbe_min
+                img_min.onerror = function(e) {
+                    document.getElementById("img_min").src="images/oops.png"
+                };
+
+                img_max.src='Plot/'+data[0].nom_courbe_max
+                img_max.onerror = function(e) {
+                    document.getElementById("img_max").src="images/oops.png"
+                };
+            };
+            xhr.send('id_station='+id_station+'&zone='+zone+'&datepicker_start='+datepicker_start+'&datepicker_end='+datepicker_end);
+                       
+            //affichage du nom de station dans le menu
+            document.getElementById("station-name").innerHTML=e.target.getPopup().getContent();
+            
+            
+
+            
         }
+
+
         function toggleIn(){
             //toggle in nav bar
             let menu= document.getElementById('nav-courbes');
@@ -149,6 +189,9 @@
             menu.classList.add('opened');
         }
      
+
+
+
     </script>
 
 

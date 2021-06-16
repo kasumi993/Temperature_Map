@@ -97,88 +97,48 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
   # méthode pour traiter les requêtes POST - non utilisée dans l'exemple
   def do_POST(self):
     self.init_params()
-    
+    data=[]
+    donnee={}
     
     # requête générique
     if self.path_info[0] == "recherches":
-              
+      print("voila")
+      print(self.params["datepicker_start"])
       #Renommage des variables envoyées par le formulaire
+      self.start_date=str(self.params["datepicker_start"][0]).split("-")
+      self.end_date=str(self.params["datepicker_end"][0]).split("-")
+      
                      
-      self.jour_debut = self.params['jour_debut'][0]
-      self.jour_fin = self.params['jour_fin'][0]
-      self.mois_debut = self.params['mois_debut'][0]
-      self.mois_fin = self.params['mois_fin'][0]
-      self.annee_debut = self.params['annee_debut'][0]
-      self.annee_fin = self.params['annee_fin'][0]
+      self.jour_debut = self.start_date[2]
+      self.jour_fin = self.end_date[2]
+      self.mois_debut = self.start_date[1]
+      self.mois_fin = self.end_date[1]
+      self.annee_debut = self.start_date[0]
+      self.annee_fin =self.end_date[0]
       self.zone = self.params['zone'][0]      
       self.courbes = [0,0,0]
       
-      if len(self.jour_debut)==1:
-          self.jour_debut = '0'+self.jour_debut
-      if len(self.jour_fin)==1:
-          self.jour_fin = '0'+self.jour_fin
-      if len(self.mois_debut)==1:
-          self.mois_debut = '0'+self.mois_debut
-      if len(self.mois_fin)==1:
-          self.mois_fin = '0'+self.mois_fin
-                
-
-      if 'Temp_min' in self.body:
-          self.courbes[0]=1
-      
-      if 'Temp_max' in self.body:
-          self.courbes[1]=1
-
-      if 'Temp_moy' in self.body:
-          self.courbes[2]=1
                     
       if self.zone == 'france':
-          nom_courbe = self.courbe_nationale(self.courbes,self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
-          self.send_html('<img src="Plot/{}" alt="Courbe de température"/>'.format(nom_courbe));
+          nom_courbe_moy = self.courbe_nationale([1,0,0],self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
+          nom_courbe_min = self.courbe_nationale([0,1,0],self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
+          nom_courbe_max = self.courbe_nationale([0,0,1],self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
+          donnee['nom_courbe_moy']=nom_courbe_moy
+          donnee['nom_courbe_min']=nom_courbe_min
+          donnee['nom_courbe_max']=nom_courbe_max
+          data.append(donnee)
+          self.send_json(data)
 
       else:
           self.id_station = int(self.params['id_station'][0])
-          nom_courbe = self.courbe_station(self.courbes,self.id_station,self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
-          self.send_html('<img src="Plot/{}" alt="Courbe de température"/>'.format(nom_courbe));
-
-      
-
-    elif self.path_info[0] == "recherches+":
-         
-      #Renommage des variables envoyées par le formulaire
-
-      self.jour = self.params['jour_seul'][0]
-      self.mois = self.params['mois_seul'][0]
-      self.zone = self.params['zonegeog'][0]
-      self.courbes = [0,0,0]
-      
-      if len(self.jour)==1:
-          self.jour = '0'+self.jour
-
-      if len(self.mois)==1:
-          self.mois = '0'+self.mois
-
-      
-      if 'Temp_min' in self.body:
-          self.courbes[0]=1
-      
-      if 'Temp_max' in self.body:
-          self.courbes[1]=1
-
-      if 'Temp_moy' in self.body:
-          self.courbes[2]=1
-          
-      
-      if self.zone == 'station':
-          self.id_station = int(self.params['id_station'][0])
-          nom_courbe = self.courbe_station_av(self.courbes,self.id_station,self.jour,self.mois)
-          self.send_html('<p><a href="HTML_Temperatures_rech_av.html">Retour au formulaire</a></p><p><img src="Plot/{}" alt="Courbe de température"/></p>'.format(nom_courbe));
-
-      if self.zone == 'france':
-          nom_courbe = self.courbe_nationale_av(self.courbes,self.jour,self.mois)
-          self.send_html('<p><a href="HTML_Temperatures_rech_av.html">Retour au formulaire</a></p><p><img src="Plot/{}" alt="Courbe de température"/></p>'.format(nom_courbe));
-    
-            
+          nom_courbe_moy = self.courbe_station([1,0,0],self.id_station,self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
+          nom_courbe_min = self.courbe_station([0,1,0],self.id_station,self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
+          nom_courbe_max = self.courbe_station([0,0,1],self.id_station,self.jour_debut,self.mois_debut,self.annee_debut,self.jour_fin,self.mois_fin,self.annee_fin)
+          donnee['nom_courbe_moy']=nom_courbe_moy
+          donnee['nom_courbe_min']=nom_courbe_min
+          donnee['nom_courbe_max']=nom_courbe_max
+          data.append(donnee)
+          self.send_json(data)
     else:
       self.send_error(405)
 
@@ -261,7 +221,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         """fonction pour afficher les courbes par station"""
         
         id_station = int(id_station)
-        c.execute('SELECT Ville from stations-meteo WHERE Numero = {}'.format(id_station))
+        c.execute("SELECT Ville from 'stations-meteo' WHERE Numero = {}".format(id_station))
         nom_station = str(c.fetchall()).strip('[').strip(']').strip('(').strip(')').strip(',').strip("'")
 
         
@@ -269,7 +229,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         date1 = int(annee_1+mois_1+jour_1)
         date2 = int(annee_2+mois_2+jour_2)
 
-        c.execute('SELECT TG, TN, TX, Q_TG, Q_TN, Q_TX, DATE from historique WHERE numéro = {} AND date >= {} AND date < {} ORDER BY date ASC'.format(id_station, date1, date2))
+        c.execute('SELECT Temp_moyennes, Temp_minimales, Temp_maximales, Q_TG, Q_TN, Q_TX, DATE from Historique_Temp WHERE Numero = {} AND date >= {} AND date < {} ORDER BY date ASC'.format(id_station, date1, date2))
         data = c.fetchall()
         
         Tmoy, Tmin, Tmax = [],[],[]
@@ -324,7 +284,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         """fonction pour afficher les courbes par station"""
         
         id_station = int(id_station)
-        c.execute('SELECT ville from stations-meteo WHERE Numero = {}'.format(id_station))
+        c.execute("SELECT Ville from 'stations-meteo' WHERE Numero = {}".format(id_station))
         nom_station = str(c.fetchall()).strip('[').strip(']').strip('(').strip(')').strip(',').strip("'")
 
         
@@ -398,7 +358,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
 
         TimeDate=[] #liste des dates
         sta='33'
-        c.execute('SELECT DATE from historique WHERE Numero = {} AND date >= {} AND date < {} ORDER BY date ASC'.format(sta, date1, date2))
+        c.execute('SELECT DATE from Historique_Temp WHERE Numero = {} AND date >= {} AND date < {} ORDER BY date ASC'.format(sta, date1, date2))
         data = c.fetchall()
         for k in data:
             TimeDate.append(str(k[0]))
@@ -492,7 +452,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
 
         TimeDate=[] #liste des dates
         sta='33'
-        c.execute('SELECT DATE from historique WHERE Numero = {} AND date % 10000 = {} ORDER BY date ASC'.format(sta, date1))
+        c.execute('SELECT DATE from Historique_Temp WHERE Numero = {} AND date % 10000 = {} ORDER BY date ASC'.format(sta, date1))
         data = c.fetchall()
         for k in data:
             TimeDate.append(str(k[0]))
