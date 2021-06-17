@@ -45,8 +45,7 @@
                 <div class="searchInputWrapper">
                 <input class="searchInput" id="searchInput" type="text" placeholder='Recherche de stations...'>
                 <i class="searchInputIcon fa fa-search"></i>
-                </input>
-			    <ul class="suggestionBox" id="suggestionBox">
+                <ul class="suggestionBox" id="suggestionBox">
 			    </ul>
                 </div>
             </div>
@@ -181,10 +180,7 @@
                        
             //affichage du nom de station dans le menu
             document.getElementById("station-name").innerHTML=e.target.getPopup().getContent();
-            
-            
-
-            
+               
         }
 
 
@@ -202,24 +198,49 @@
             menu.classList.add('opened');
         }
 
-        document.getElementById("searchInput").addEventListener("focus",research_suggest);
-        document.getElementById("searchInput").addEventListener("blur",suggestOff);
+        document.addEventListener("click",suggestOff);
+        document.getElementById("searchInput").addEventListener("input",suggestUpdate);
         var suggest=document.getElementById('suggestionBox');
-        function research_suggest(){
-            console.log(station_list);
+        
+        
+
+        function suggestUpdate(){
+            
             suggest.classList.remove('off');
             suggest.classList.add('toggled');
+            var inputValue=document.getElementById("searchInput").value
+            var e = document.querySelector("ul");
+            //supprime les elements de suggestion présents
+            //e.firstElementChild can be used.
+            var child = e.lastElementChild; 
+            while (child) {
+                e.removeChild(child);
+                child = e.lastElementChild;
+            }
+
+            //crée des elements de suggestion en fonction de ce qui est entré comme input
             for ( n = 0; n < station_list.length; n++ ) {
-                var li=document.createElement("li")
-                li.className=station_list[n].ville;
-                li.innerHTML=station_list[n].ville;
-                suggest.appendChild(li);
+                if(inputValue.toUpperCase()==station_list[n].ville.substring(0,inputValue.length).toUpperCase()){
+                    var li=document.createElement("li");
+                    li.className=station_list[n].ville;
+                    var buttonMarker=document.createElement("button");
+                    buttonMarker.innerHTML=station_list[n].ville;
+                    buttonMarker.className=station_list[n].num;
+                    buttonMarker.addEventListener("click",zoomOnMarker);
+                    li.appendChild(buttonMarker);
+                    suggest.appendChild(li);
+                }
             }
         }
 
         function suggestOff(){
             suggest.classList.remove('toggled');
             suggest.classList.add('off');
+        }
+
+        function zoomOnMarker(e){
+            var id=e.target.className;
+            map.setView([station_list[id].lat,station_list[id].lon], 10);  
         }
 
     </script>

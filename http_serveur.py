@@ -303,7 +303,7 @@ def courbe_nationale(courbes,jour_1,mois_1,annee_1,jour_2,mois_2,annee_2):
     Qmoy, Qmin, Qmax = [],[],[] #liste des qualitées des mesures
     for i in range(len(id_stations)):  
         station=id_stations[i]
-        c.execute('SELECT Temp_moyennes, Temp_minimales, Temp_maximales, Q_TG, Q_TN, Q_TX, from Historique_Temp WHERE Numero = {} AND date >= {} AND date < {} ORDER BY date ASC'.format(station, date1, date2))
+        c.execute('SELECT Temp_moyennes, Temp_minimales, Temp_maximales, Q_TG, Q_TN, Q_TX from Historique_Temp WHERE Numero = {} AND date >= {} AND date < {} ORDER BY date ASC'.format(station, date1, date2))
         data = c.fetchall()
         Tmoy.append([])
         Tmin.append([])
@@ -368,9 +368,10 @@ def courbe_nationale(courbes,jour_1,mois_1,annee_1,jour_2,mois_2,annee_2):
         plt.xticks([0,n//4,n//2,3*n//4,n-1],[format(TimeDate[0]),format(TimeDate[n//4]),format(TimeDate[n//2]),format(TimeDate[3*n//4]),format(TimeDate[-1])])
     
     plt.legend(fontsize=10,loc=4)
-    plt.savefig('Client/Plot/'+'national'+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png',bbox_inches='tight')
+    plt.savefig('client/Plot/'+'national'+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png',bbox_inches='tight')
     titre='national'+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png'
     #Remplissage de la table courbe_stations
+
     c.execute('INSERT INTO courbes_france VALUES (?,?,?,?,?,?)',(titre,date1,date2,courbes[0],courbes[1],courbes[2]))
     conn.commit()
     return('national'+'_'+str(date1)+str(date2)+str(courbes[0])+str(courbes[1])+str(courbes[2])+'.png')
