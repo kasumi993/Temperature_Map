@@ -20,11 +20,14 @@ France (https://donneespubliques.meteofrance.fr/) mais seulement depuis 1996…
 
 
 **Prise en main et installation:**
+
 D'abord, il faut cloner le projet. Ensuite, démarre le fichier http_serveur.py.
 Il démarre sur la port 80.
 Après, sur le navigateur tape :localhost :80 et finalement cela va démarrer l’application.
 
+
 **Utilisation/fonctionnalité**
+
 Une fois que l’application est demarré il faut lire ce que le petit bonhomme (Kiwi) dit.
 Le premier choix que vous devez faire c'est pas rapport à la Filtrage : Il faut choisir soit filtrage par Station en France soit par toute la France.
 Alors, si on prend station comme paramètre du filtre, le prochain pas c'est choisir le période sur lequel on veut se renseigner.
