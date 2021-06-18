@@ -33,28 +33,28 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
 # sous-répertoire racine des documents statiques
   static_dir = '/client'
 
-#cette fonction sert à modifier directement le format des latitudes/longitudes
-#decommenter pour utiliser
-  # def conversion(chaine):
-  #   signe = chaine[0]
-  #   chaine = chaine.split(':')
-  #   degre = abs(float(chaine[0]))
-  #   minute = float(chaine[1])
-  #   seconde = float(chaine[2])
-  #   DD = degre + minute/60 + seconde/3600
-  #   if signe == '+':
-  #       return DD
-  #   else:
-  #       return -DD
+# cette fonction sert à modifier directement le format des latitudes/longitudes
+# # decommenter pour utiliser
+#    def conversion(chaine):
+#      signe = chaine[0]
+#      chaine = chaine.split(':')
+#      degre = abs(float(chaine[0]))
+#      minute = float(chaine[1])
+#      seconde = float(chaine[2])
+#      DD = degre + minute/60 + seconde/3600
+#      if signe == '+':
+#          return DD
+#      else:
+#          return -DD
     
     
-  # c.execute("SELECT Numero,Latitude,Longitude FROM 'stations-meteo'")
-  # resultat=c.fetchall()
-  # print(resultat[1])
+#    c.execute("SELECT Numero,Latitude,Longitude FROM 'stations-meteo'")
+#    resultat=c.fetchall()
+#    print(resultat[1])
 
-  # for i in range(len(resultat)):
-  #   c.execute("UPDATE 'stations-meteo' SET Latitude=?, Longitude= ? WHERE Numero = ?",(conversion(resultat[i][1]),conversion(resultat[i][2]),resultat[i][0]))
-  #   conn.commit()
+#    for i in range(len(resultat)):
+#      c.execute("UPDATE 'stations-meteo' SET Latitude=?, Longitude= ? WHERE Numero = ?",(conversion(resultat[i][1]),conversion(resultat[i][2]),resultat[i][0]))
+#      conn.commit()
 
 #fin fonction modification base de donnée
 
